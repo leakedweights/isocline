@@ -14,7 +14,6 @@ from ..components.consistency_utils import *
 
 import wandb
 from tqdm import trange
-from cleanfid import fid
 from functools import partial
 from typing import Any, Optional
 
@@ -28,7 +27,7 @@ class TrainState(train_state.TrainState):
 def train_step(random_key: Any,
                state: train_state.TrainState,
                x: jax.Array,
-               y: jax.Array,
+               context: jax.Array,
                t1: jax.Array,
                t2: jax.Array,
                sigma_data: float,
@@ -50,9 +49,9 @@ def train_step(random_key: Any,
         xt2_raw = x + t2_noise_dim * noise
 
         _, xt1 = jax.lax.stop_gradient(consistency_fn(
-            xt1_raw, y, t1, sigma_data, sigma_min, partial(state.apply_fn, rngs={"dropout": dropout_t1}), params, train=True))
+            xt1_raw, context, t1, sigma_data, sigma_min, partial(state.apply_fn, rngs={"dropout": dropout_t1}), params, train=True))
         _, xt2 = consistency_fn(
-            xt2_raw, y, t2, sigma_data, sigma_min, partial(state.apply_fn, rngs={"dropout": dropout_t2}), params, train=True)
+            xt2_raw, context, t2, sigma_data, sigma_min, partial(state.apply_fn, rngs={"dropout": dropout_t2}), params, train=True)
 
         loss = pseudo_huber_loss(xt2, xt1, c_data)
         weight = cast_dim((1 / (t2 - t1)), loss.ndim)
@@ -92,7 +91,6 @@ class ConsistencyTrainer:
         device_batch_size = dataloader.batch_size // num_devices
         self.device_batch_shape = (device_batch_size, *img_shape)
 
-
         init_input = jnp.ones(self.device_batch_shape)
         init_labels = jnp.ones((device_batch_size,), dtype=jnp.int32)
         init_time = jnp.ones((device_batch_size,))
@@ -113,12 +111,13 @@ class ConsistencyTrainer:
                 except StopIteration:
                     continue
 
-                x_batch, y_batch = batch
+                x_batch, context_batch = batch
                 _, *data_dim = x_batch.shape
-                _, *label_dim = y_batch.shape
+                _, *label_dim = context_batch.shape
 
                 x_parallel = x_batch.reshape(self.num_devices, -1, *data_dim)
-                y_parallel = y_batch.reshape(self.num_devices, -1, *label_dim)
+                context_parallel = context_batch.reshape(
+                    self.num_devices, -1, *label_dim)
 
                 self.random_key, schedule_key, *device_keys = random.split(
                     self.random_key, self.num_devices + 2)
@@ -128,7 +127,7 @@ class ConsistencyTrainer:
                 config = self.consistency_config
 
                 N = discretize(
-                    step, config["s0"], config["s1"], train_steps)
+                    step, config["s0"], config["s1"], self.config["max_steps"])
 
                 noise_levels = get_boundaries(
                     N, config["sigma_min"], config["sigma_max"], config["rho"])
@@ -140,7 +139,7 @@ class ConsistencyTrainer:
                     device_keys,
                     parallel_state,
                     x_parallel,
-                    y_parallel,
+                    context_parallel,
                     t1, t2,
                     config["sigma_data"],
                     config["sigma_min"],
@@ -261,6 +260,6 @@ class ConsistencyTrainer:
 
             i += len(pillow_outputs)
 
-        score = fid.compute_fid(eval_dir, **self.config["fid_params"])
+        print("FID is missing")
 
-        return score
+        return 0.0

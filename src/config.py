@@ -15,7 +15,7 @@ consistency_config = {
 
 model_config = {
     "nonlinearity": nn.swish,
-    "channel_mults": (1, 2, 4, 8, 16),
+    "channel_mults": (1, 2, 4, 8),  # 64x64 -> 32x32 -> 16x16 -> 8x8
     "attention_mults": (2, 8),
     "kernel_size": (3, 3),
     "num_init_channels": 16,
@@ -26,10 +26,10 @@ model_config = {
     "resblock_variant": "BigGAN++",
     "dropout": 0.2,
     "use_context": True,
-    "context_fn": lambda x: x
 }
 
 trainer_config = {
+    "max_steps": 1_000_000,
     "learning_rate": 2e-4,
     "use_ema": False,
 
@@ -47,11 +47,6 @@ trainer_config = {
     "ground_truth_dir": None,
     "eval_dir": None,
     "num_eval_samples": int(3e4),
-
-    "fid_params": {
-        "device": None,
-        "verbose": False
-    },
 
     "checkpoint_frequency": 50_000,
     "checkpoints_to_keep": 10,
