@@ -10,9 +10,9 @@ from jax import random
 from torch.utils.data import DataLoader
 
 from config import model_config, trainer_config, consistency_config
-from training import dataloader
-from models.unet import UNet
-from training.trainer import ConsistencyTrainer
+from .training import dataloader
+from .models.unet import UNet
+from .training.trainer import ConsistencyTrainer
 
 
 def parse_args():
