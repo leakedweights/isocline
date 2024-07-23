@@ -2,10 +2,10 @@ import os
 from PIL import Image
 import torch
 import zipfile
+from tqdm import tqdm
 import rasterio
 import numpy as np
-from jax.tree_util import tree_map
-from torch.utils.data import default_collate, Dataset
+from torch.utils.data import Dataset
 from sklearn.model_selection import train_test_split
 from torchvision.transforms import Compose, ToTensor, Lambda, ToPILImage
 from typing import Optional
@@ -116,21 +116,15 @@ def save_normalize_eval_dataset(dataset: Dataset, output_dir: str):
         Image.fromarray(normalized_data).save(output_path)
 
 
-
-def numpy_collate(batch):
-    batch = default_collate(batch)
-    batch = tree_map(lambda x: np.asarray(x), batch)
-    return batch
-
-
 transform = Compose([
     ToTensor(),
     Lambda(lambda x: x.permute(1, 2, 0)),
+    Lambda(lambda x: x * 2.0 - 1.0),
 ])
 
 reverse_transform = Compose([
     Lambda(lambda x: torch.from_numpy(np.asarray(x))),
     Lambda(lambda x: x.permute(2, 0, 1)),
-    Lambda(lambda x: 0.5 * (x - 1)),
+    Lambda(lambda x: 0.5 * (x - 1.0)),
     ToPILImage()
 ])

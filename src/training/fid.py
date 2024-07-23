@@ -11,7 +11,7 @@ from jax_fid import inception, fid as jf
 
 class FID:
     """
-    A utility for using jax-fid.
+    A utility class for using jax-fid.
     Based on https://github.com/matthias-wright/jax-fid/blob/main/jax_fid/fid.py
     """
 
@@ -26,7 +26,7 @@ class FID:
         rng = jax.random.PRNGKey(0)
 
         model = inception.InceptionV3(pretrained=True)
-        self.params = model.init(rng, jnp.ones((1, 256, 256, 3)))
+        self.params = model.init(rng, jnp.ones((1, scale_to, scale_to, 3)))
 
         self.apply_fn = jax.jit(partial(model.apply, train=False))
 
