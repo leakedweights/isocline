@@ -9,7 +9,7 @@ import optax
 from jax import random
 from torch.utils.data import DataLoader
 
-from config import model_config, trainer_config, consistency_config
+from .config import model_config, trainer_config, consistency_config
 from .training import dataloader
 from .models.unet import UNet
 from .training.trainer import ConsistencyTrainer
@@ -25,9 +25,9 @@ def parse_args():
     parser.add_argument('--learning-rate', type=float,
                         default=0.0002, help='Learning rate for the optimizer')
     parser.add_argument('--elevation-zip', type=str,
-                        required=True, help='Path to the DEM dataset')
+                        default="../data/elevation.zip", help='Path to the DEM dataset')
     parser.add_argument('--context-zip', type=str,
-                        required=True, help='Path to the context dataset')
+                        default="../data/context.zip", help='Path to the context dataset')
     parser.add_argument('--checkpoint-dir', type=str,
                         default='./checkpoints', help='Path to save the trained model')
     parser.add_argument('--snapshot-dir', type=str,

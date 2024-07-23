@@ -1,8 +1,29 @@
 # Terrain Consistency Models
 
-## Requirements
-**Hardware:** An XLA-compatible device, 32GB+ RAM.
-**Software packages:** jax, jaxlib, flax, optax, numpy, scipy, rasterio, torch, torchvision, wandb, transformers, jax_fid, sklearn, tqdm, pillow
+## Requirements & Installation
+You will need an XLA-compatible device and 32GB+ RAM. Also, these packages: jax, jaxlib, flax, optax, numpy, scipy, rasterio, torch, torchvision, wandb, transformers, jax_fid, sklearn, tqdm, pillow, gdown, requests.
+
+### Setup
+
+1. Clone this repository and `cd` into it.
+    ```bash
+    git clone https://github.com/leakedweights/isocline.git && cd isocline
+    ```
+
+2. Install dependencies.
+    ```bash
+    pip install .
+    ```
+
+3. Download datasets.
+    ```bash
+    python3 -m data.download
+    ```
+
+4. Run training script.
+   ```bash
+   python3 -m src.run --steps 400_000 --batch-size 512
+   ```
 
 ## Dataset
 
