@@ -15,7 +15,7 @@ consistency_config = {
 
 model_config = {
     "nonlinearity": nn.swish,
-    "channel_mults": (1, 2, 4, 8),  # 64x64 -> 32x32 -> 16x16 -> 8x8
+    "channel_mults": (1, 2, 4, 8),
     "attention_mults": (2, 8),
     "kernel_size": (3, 3),
     "num_init_channels": 16,
@@ -30,7 +30,7 @@ model_config = {
 }
 
 trainer_config = {
-    "max_steps": 1_000_000,
+    "max_steps": 400_000,
     "learning_rate": 2e-4,
     "use_ema": False,
     "context_dim": (77, 768),

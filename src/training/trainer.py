@@ -132,8 +132,8 @@ class ConsistencyTrainer:
                     range_vals = jnp.where(range_vals == 0, 1, range_vals)
 
                     x_batch = (x_batch - min_vals) / range_vals
-                    x_batch = 2 * x_batch - 1
 
+                x_batch = 2 * x_batch - 1
                 x_batch = jnp.transpose(x_batch, (0, 2, 3, 1))
 
                 x_parallel = x_batch.reshape(self.num_devices, -1, *data_dim)
