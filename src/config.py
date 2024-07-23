@@ -34,8 +34,9 @@ trainer_config = {
     "learning_rate": 2e-4,
     "use_ema": False,
     "context_dim": (77, 768),
-    "guidance_scale": 0.2,  # TODO: find best scale
+    "guidance_scale": 1.0,
     "batch_rescale": True,
+    "empty_context": None,
 
     "optimizer": None,
     "log_wandb": True,

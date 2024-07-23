@@ -4,6 +4,7 @@ import os
 import argparse
 
 import jax
+import wandb
 import optax
 from jax import random
 from torch.utils.data import DataLoader
@@ -35,6 +36,8 @@ def parse_args():
                         default='./eval', help='Path to save evaluation images')
     parser.add_argument('--empty-context-file', type=str,
                         default='empty_context.npy', help='Filename of the empty context tensor (in context-zip)')
+    parser.add_argument('--wandb-project-name', type=str,
+                        default='terrain_consistency', help='Weights and Biases project name')
 
     return parser.parse_args()
 
@@ -60,13 +63,27 @@ def train(args):
     config["reference_dir"] = f"{args.eval_dir}/reference"
     config["synthetic_dir"] = f"{args.eval_dir}/synthetic"
 
-    train_files, eval_files = dataloader.split_dataset(args.elevation_zip, args.context_zip)
-    train_dataset = dataloader.ZippedTerrainDataset(args.elevation_zip, args.context_zip, args.empty_context_file, files=train_files)
-    eval_dataset = dataloader.ZippedTerrainDataset(args.elevation_zip, args.context_zip, args.empty_context_file, files=eval_files)
-    dataloader.save_normalize_eval_dataset(eval_dataset, config["synthetic_dir"])
+    train_files, eval_files = dataloader.split_dataset(
+        args.elevation_zip, args.context_zip)
+    train_dataset = dataloader.ZippedTerrainDataset(
+        args.elevation_zip, args.context_zip, args.empty_context_file, files=train_files)
+    eval_dataset = dataloader.ZippedTerrainDataset(
+        args.elevation_zip, args.context_zip, args.empty_context_file, files=eval_files)
+    dataloader.save_normalize_eval_dataset(
+        eval_dataset, config["synthetic_dir"])
+
+    config["empty_context"] = train_dataset.empty_context_data
 
     terrain_dataloader = DataLoader(
         train_dataset, batch_size=args.batch_size, shuffle=True)
+
+    wandb.init(
+        project=args.wandb_project_name,
+        config={
+            "model": model_config,
+            "trainer": config
+        }
+    )
 
     random_key = random.PRNGKey(0)
     trainer = ConsistencyTrainer(random_key,

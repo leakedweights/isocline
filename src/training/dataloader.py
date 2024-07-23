@@ -115,13 +115,7 @@ def save_normalize_eval_dataset(dataset: Dataset, output_dir: str):
         output_path = os.path.join(output_dir, f"normalized_{idx}.png")
         Image.fromarray(normalized_data).save(output_path)
 
-
-transform = Compose([
-    ToTensor(),
-    Lambda(lambda x: x.permute(1, 2, 0)),
-    Lambda(lambda x: x * 2.0 - 1.0),
-])
-
+        
 reverse_transform = Compose([
     Lambda(lambda x: torch.from_numpy(np.asarray(x))),
     Lambda(lambda x: x.permute(2, 0, 1)),

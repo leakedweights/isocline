@@ -123,14 +123,18 @@ class ConsistencyTrainer:
 
                 # normalize batch and rescale to [-1, 1]
                 if self.config["batch_rescale"]:
-                    min_vals = x_batch.min(dim=tuple(range(1, len(data_dim)+1)), keepdim=True)[0]
-                    max_vals = x_batch.max(dim=tuple(range(1, len(data_dim)+1)), keepdim=True)[0]
+                    min_vals = jnp.min(x_batch, axis=tuple(
+                        range(1, len(data_dim)+1)), keepdims=True)
+                    max_vals = jnp.max(x_batch, axis=tuple(
+                        range(1, len(data_dim)+1)), keepdims=True)
 
                     range_vals = max_vals - min_vals
-                    range_vals[range_vals == 0] = 1
+                    range_vals = jnp.where(range_vals == 0, 1, range_vals)
 
                     x_batch = (x_batch - min_vals) / range_vals
                     x_batch = 2 * x_batch - 1
+
+                x_batch = jnp.transpose(x_batch, (0, 2, 3, 1))
 
                 x_parallel = x_batch.reshape(self.num_devices, -1, *data_dim)
                 context_parallel = context_batch.reshape(
@@ -246,7 +250,10 @@ class ConsistencyTrainer:
         else:
             generation_params = self.state.params
 
-        context = context if context is not None else self.empty_context
+        if context is None:
+            empty_context = self.config["empty_context"]
+            context = jnp.repeat(jnp.expand_dims(
+                empty_context, axis=0), self.device_batch_shape[0], axis=0)
 
         return sample_single_step(key,
                                   self.state.apply_fn,
@@ -259,13 +266,12 @@ class ConsistencyTrainer:
                                   classes=context)
 
     def generate_cfg(self, key, context):
-        self.config["guidance_scale"]
         cond_key, uncond_key = random.split(key)
 
         x_cond = self.generate(cond_key, context)
         x_uncond = self.generate(uncond_key)
 
-        return x_cond + self.config.guidance_scale * (x_cond - x_uncond)
+        return x_cond + self.config["guidance_scale"] * (x_cond - x_uncond)
 
     def run_eval(self):
         eval_dir = self.config["synthetic_dir"]
