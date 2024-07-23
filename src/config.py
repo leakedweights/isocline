@@ -34,13 +34,15 @@ trainer_config = {
     "learning_rate": 2e-4,
     "use_ema": False,
     "context_dim": (77, 768),
+    "guidance_scale": 0.2,  # TODO: find best scale
+    "batch_rescale": True,
 
     "optimizer": None,
     "log_wandb": True,
     "log_frequency": 100,
 
     "create_snapshots": True,
-    "snapshot_frequency": 10_000,
+    "snapshot_frequency": 15_000,
     "samples_to_keep": 5,
     "snapshot_dir": None,
 
@@ -48,9 +50,9 @@ trainer_config = {
     "eval_frequency": 5000,
     "reference_dir": None,
     "synthetic_dir": None,
-    "num_eval_samples": int(3e4),
+    "num_eval_samples": int(1e4),
 
-    "checkpoint_frequency": 50_000,
+    "checkpoint_frequency": 15_000,
     "checkpoints_to_keep": 10,
     "checkpoint_dir": None
 }

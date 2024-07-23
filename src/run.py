@@ -53,15 +53,20 @@ def preprocess_args(args):
 
 
 def train(args):
-    dataset = dataloader.ZippedTerrainDataset(
-        args.elevation_zip, args.context_zip, args.empty_context_file)
+    config = trainer_config
+    model = UNet(**model_config)
+    optimizer = optax.radam(config["learning_rate"])
+
+    config["reference_dir"] = f"{args.eval_dir}/reference"
+    config["synthetic_dir"] = f"{args.eval_dir}/synthetic"
+
+    train_files, eval_files = dataloader.split_dataset(args.elevation_zip, args.context_zip)
+    train_dataset = dataloader.ZippedTerrainDataset(args.elevation_zip, args.context_zip, args.empty_context_file, files=train_files)
+    eval_dataset = dataloader.ZippedTerrainDataset(args.elevation_zip, args.context_zip, args.empty_context_file, files=eval_files)
+    dataloader.save_normalize_eval_dataset(eval_dataset, config["synthetic_dir"])
 
     terrain_dataloader = DataLoader(
-        dataset, batch_size=args.batch_size, shuffle=True, collate_fn=dataloader.numpy_collate,)
-
-    trainer_cfg = trainer_config
-    model = UNet(**model_config)
-    optimizer = optax.radam(trainer_cfg["learning_rate"])
+        train_dataset, batch_size=args.batch_size, shuffle=True)
 
     random_key = random.PRNGKey(0)
     trainer = ConsistencyTrainer(random_key,
@@ -70,7 +75,7 @@ def train(args):
                                  dataloader=terrain_dataloader,
                                  img_shape=(64, 64, 1),
                                  num_devices=jax.local_device_count(),
-                                 config=trainer_cfg,
+                                 config=config,
                                  consistency_config=consistency_config)
 
     trainer.train(args.steps)

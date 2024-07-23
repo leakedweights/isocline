@@ -1,15 +1,14 @@
+import os
+from PIL import Image
 import torch
 import zipfile
 import rasterio
 import numpy as np
 from jax.tree_util import tree_map
 from torch.utils.data import default_collate, Dataset
+from sklearn.model_selection import train_test_split
 from torchvision.transforms import Compose, ToTensor, Lambda, ToPILImage
-
-
-import zipfile
-from torch.utils.data import Dataset
-import io
+from typing import Optional
 
 
 class ZippedTerrainDataset(Dataset):
@@ -19,6 +18,7 @@ class ZippedTerrainDataset(Dataset):
                  empty_context_filename: str,
                  terrain_file_type: str = "tif",
                  context_file_type: str = "npy",
+                 files: Optional[list] = None,
                  **kwargs):
 
         super().__init__(**kwargs)
@@ -29,19 +29,22 @@ class ZippedTerrainDataset(Dataset):
         self.terrain_file_type = terrain_file_type
         self.context_file_type = context_file_type
 
-        self.files = [f for f in self.elevation_zip.namelist(
-        ) if f.endswith(self.terrain_file_type)]
+        if files is None:
+            self.files = [f for f in self.elevation_zip.namelist(
+            ) if f.endswith(self.terrain_file_type)]
+        else:
+            self.files = files
 
         with self.context_zip.open(empty_context_filename) as file:
-            self.empty_context_data = file.read()
+            self.empty_context_data = np.load(file)
 
     def __len__(self):
         return len(self.files)
 
     def open_tif(self, bytes_data):
-        with rasterio.open(io.BytesIO(bytes_data)) as src:
-            data = src.read(1)
-            data = np.ma.masked_where(data == src.nodata, data).compressed()
+        with rasterio.MemoryFile(bytes_data) as memfile:
+            with memfile.open() as src:
+                data = src.read(1)
         return data
 
     def __getitem__(self, idx: int):
@@ -55,15 +58,63 @@ class ZippedTerrainDataset(Dataset):
 
         try:
             with self.context_zip.open(target_context_file) as file:
-                context_data = file.read()
+                context_data = np.load(file)
         except KeyError:
             context_data = self.empty_context_data
 
-        return elevation_array, io.BytesIO(context_data)
+        return elevation_array, context_data
 
     def __del__(self):
         self.elevation_zip.close()
         self.context_zip.close()
+
+
+def split_dataset(elevation_zip: str, context_zip: str, test_ratio: float = 0.1):
+    with zipfile.ZipFile(elevation_zip) as ezip, zipfile.ZipFile(context_zip) as czip:
+        terrain_files = [f for f in ezip.namelist() if f.endswith('tif')]
+        context_files = {f.replace('npy', 'tif')
+                         for f in czip.namelist() if f.endswith('npy')}
+
+        files_with_context = [f for f in terrain_files if f in context_files]
+        files_without_context = [
+            f for f in terrain_files if f not in context_files]
+
+        total_files = len(terrain_files)
+        test_size = int(total_files * test_ratio)
+        train_size = total_files - test_size
+
+        if len(files_with_context) <= train_size:
+            train_files = files_with_context
+            remaining_train_slots = train_size - len(train_files)
+
+            additional_train_files, eval_files = train_test_split(
+                files_without_context, test_size=test_size)
+            train_files.extend(additional_train_files[:remaining_train_slots])
+        else:
+            train_files, eval_files_with_context = train_test_split(
+                files_with_context, train_size=train_size)
+            eval_files = eval_files_with_context + \
+                files_without_context[:test_size -
+                                      len(eval_files_with_context)]
+
+        return train_files, eval_files
+
+
+def save_normalize_eval_dataset(dataset: Dataset, output_dir: str):
+    os.makedirs(output_dir, exist_ok=True)
+
+    for idx, (elevation_array, _) in enumerate(tqdm(dataset, desc="Saving normalized dataset")):
+        abs_max = np.max(np.abs(elevation_array))
+        if abs_max != 0:
+            normalized_data = elevation_array / abs_max
+        else:
+            normalized_data = elevation_array
+
+        normalized_data = (normalized_data * 255).astype(np.uint8)
+
+        output_path = os.path.join(output_dir, f"normalized_{idx}.png")
+        Image.fromarray(normalized_data).save(output_path)
+
 
 
 def numpy_collate(batch):
@@ -75,7 +126,6 @@ def numpy_collate(batch):
 transform = Compose([
     ToTensor(),
     Lambda(lambda x: x.permute(1, 2, 0)),
-    Lambda(lambda x: x * 2 - 1),
 ])
 
 reverse_transform = Compose([

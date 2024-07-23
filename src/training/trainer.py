@@ -119,11 +119,22 @@ class ConsistencyTrainer:
 
                 x_batch, context_batch = batch
                 _, *data_dim = x_batch.shape
-                _, *label_dim = context_batch.shape
+                _, *context_dim = context_batch.shape
+
+                # normalize batch and rescale to [-1, 1]
+                if self.config["batch_rescale"]:
+                    min_vals = x_batch.min(dim=tuple(range(1, len(data_dim)+1)), keepdim=True)[0]
+                    max_vals = x_batch.max(dim=tuple(range(1, len(data_dim)+1)), keepdim=True)[0]
+
+                    range_vals = max_vals - min_vals
+                    range_vals[range_vals == 0] = 1
+
+                    x_batch = (x_batch - min_vals) / range_vals
+                    x_batch = 2 * x_batch - 1
 
                 x_parallel = x_batch.reshape(self.num_devices, -1, *data_dim)
                 context_parallel = context_batch.reshape(
-                    self.num_devices, -1, *label_dim)
+                    self.num_devices, -1, *context_dim)
 
                 self.random_key, schedule_key, *device_keys = random.split(
                     self.random_key, self.num_devices + 2)

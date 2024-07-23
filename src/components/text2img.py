@@ -47,8 +47,9 @@ def process_directory(input_dir: str, output_dir: str, max_length: int, skip_lay
             np.save(output_file_path, embeddings_np)
 
 
-input_directory = "./dataset_prompts"
-output_directory = "./embeddings_output"
-max_length = 77
+if __name__ == "__main__":
+    input_directory = "./dataset_prompts"
+    output_directory = "./embeddings_output"
+    max_length = 77
 
-process_directory(input_directory, output_directory, max_length)
+    process_directory(input_directory, output_directory, max_length)
