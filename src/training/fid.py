@@ -15,13 +15,13 @@ class FID:
     Based on https://github.com/matthias-wright/jax-fid/blob/main/jax_fid/fid.py
     """
 
-    def __init__(self, img_size: tuple, reference_dir: str, batch_size: int = 64, upscale_to: int = 256):
+    def __init__(self, img_size: tuple, reference_dir: str, batch_size: int = 128, scale_to: int = 256):
         self.batch_size = batch_size
         self.img_size = img_size
         self.reference_dir = reference_dir
         self.ref_mu = None
         self.ref_sigma = None
-        self.upscale_to = upscale_to
+        self.scale_to = scale_to
 
         rng = jax.random.PRNGKey(0)
 
@@ -67,7 +67,7 @@ class FID:
                 img = img.convert("RGB")
 
             img = img.resize(
-                size=(self.upscale_to, self.upscale_to),
+                size=(self.scale_to, self.scale_to),
                 resample=Image.BILINEAR,
             )
             img = np.array(img) / 255.0

@@ -8,6 +8,7 @@ from torch.utils.data import DataLoader
 from flax.jax_utils import replicate, unreplicate
 from flax.training import train_state, checkpoints
 
+from .fid import FID
 from ..utils import cast_dim, update_ema
 from .dataloader import reverse_transform
 from ..components.consistency_utils import *
@@ -92,10 +93,15 @@ class ConsistencyTrainer:
         self.device_batch_shape = (device_batch_size, *img_shape)
 
         init_input = jnp.ones(self.device_batch_shape)
-        init_labels = jnp.ones((device_batch_size,), dtype=jnp.int32)
+        init_context = jnp.ones(self.config["context_dim"], dtype=jnp.float32)
         init_time = jnp.ones((device_batch_size,))
         model_params = model.init(
-            init_key, init_input, init_labels, init_time, train=True)
+            init_key, init_input, init_context, init_time, train=True)
+
+        if self.config["run_evals"]:
+            image_shape = self.device_batch_shape[1:]
+            self.fid = FID(image_shape, self.config["reference_dir"])
+            self.fid.precompute()
 
         self.state = TrainState.create(
             apply_fn=model.apply, params=model_params, ema_params=model_params, tx=optimizer)
@@ -223,11 +229,13 @@ class ConsistencyTrainer:
         except Exception as e:
             print(f"Unable to load checkpoint: {e}")
 
-    def generate(self, key, classes: Optional[jax.Array] = None):
+    def generate(self, key, context: Optional[jax.Array] = None):
         if self.config["use_ema"]:
             generation_params = self.state.ema_params
         else:
             generation_params = self.state.params
+
+        context = context if context is not None else self.empty_context
 
         return sample_single_step(key,
                                   self.state.apply_fn,
@@ -237,10 +245,19 @@ class ConsistencyTrainer:
                                   self.consistency_config["sigma_min"],
                                   self.consistency_config["sigma_max"],
                                   self.model.num_classes,
-                                  classes=classes)
+                                  classes=context)
+
+    def generate_cfg(self, key, context):
+        self.config["guidance_scale"]
+        cond_key, uncond_key = random.split(key)
+
+        x_cond = self.generate(cond_key, context)
+        x_uncond = self.generate(uncond_key)
+
+        return x_cond + self.config.guidance_scale * (x_cond - x_uncond)
 
     def run_eval(self):
-        eval_dir = self.config["eval_dir"]
+        eval_dir = self.config["synthetic_dir"]
         os.makedirs(eval_dir, exist_ok=True)
         num_samples = self.config["num_eval_samples"]
 
@@ -260,6 +277,6 @@ class ConsistencyTrainer:
 
             i += len(pillow_outputs)
 
-        print("FID is missing")
+        fid_score = self.fid.compute(eval_dir)
 
-        return 0.0
+        return fid_score

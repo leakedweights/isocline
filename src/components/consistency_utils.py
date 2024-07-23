@@ -58,10 +58,10 @@ def pseudo_huber_loss(x: jax.Array, y: jax.Array, c_data: float):
     return loss
 
 
-def consistency_fn(xt: jax.Array, y: jax.Array, sigma: jax.Array, sigma_data: float,
+def consistency_fn(xt: jax.Array, context: jax.Array, sigma: jax.Array, sigma_data: float,
                    sigma_min: float, apply_fn: Callable, params: Any, train: bool = False) -> tuple[jax.Array, jax.Array]:
     input = cast_dim(cin(sigma, sigma_data), xt.ndim) * xt
-    output = apply_fn(params, input * xt, y, cnoise(sigma), train)
+    output = apply_fn(params, input * xt, context, cnoise(sigma), train)
     consistency_out = cast_dim(cout(sigma, sigma_data, sigma_min), xt.ndim) * \
         output + cast_dim(cskip(sigma, sigma_data, sigma_min), xt.ndim) * xt
 
@@ -70,15 +70,12 @@ def consistency_fn(xt: jax.Array, y: jax.Array, sigma: jax.Array, sigma_data: fl
 
 def sample_single_step(key: Any, denoising_fn: Callable, denoising_params: Any,
                        shape: Iterable, sigma_data: float, sigma_min: float,
-                       sigma_max: float, num_classes: int, classes=None) -> jax.Array:
+                       sigma_max: float, context: jax.Array) -> jax.Array:
     xT = random.normal(key, shape) * sigma_max
     sigmas = sigma_max * jnp.ones(shape[:1])
 
-    if classes is None:
-        classes = jnp.array([i % num_classes for i in range(shape[0])])
-
     _, sample = consistency_fn(
-        xT, classes, sigmas, sigma_data,
+        xT, context, sigmas, sigma_data,
         sigma_min, denoising_fn, denoising_params, train=False)
 
     sample = jnp.clip(sample, -1, 1)

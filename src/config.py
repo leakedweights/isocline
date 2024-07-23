@@ -26,12 +26,14 @@ model_config = {
     "resblock_variant": "BigGAN++",
     "dropout": 0.2,
     "use_context": True,
+    "guidance_scale": 0.2
 }
 
 trainer_config = {
     "max_steps": 1_000_000,
     "learning_rate": 2e-4,
     "use_ema": False,
+    "context_dim": (77, 768),
 
     "optimizer": None,
     "log_wandb": True,
@@ -44,8 +46,8 @@ trainer_config = {
 
     "run_evals": True,
     "eval_frequency": 5000,
-    "ground_truth_dir": None,
-    "eval_dir": None,
+    "reference_dir": None,
+    "synthetic_dir": None,
     "num_eval_samples": int(3e4),
 
     "checkpoint_frequency": 50_000,

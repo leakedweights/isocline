@@ -1,11 +1,5 @@
 #!/usr/bin/python3
 
-"""
-Training script for Terrain Consistency Models.
-
-Example usage: python src/train.py --steps 1_000_000 --batch-size 512 --learning-rate 0.0002 --elevation-zip ./terrain_dataset_512.zip --context-zip ./captions.zip
-"""
-
 import os
 import argparse
 
