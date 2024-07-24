@@ -5,22 +5,29 @@ You will need an XLA-compatible device and 32GB+ RAM. Also, these packages: jax,
 
 ### Setup
 
-1. Clone this repository and `cd` into it.
+0. **Setup environment variables**
+    ```bash
+    export AWS_ACCESS_KEY_ID=______
+    export AWS_SECRET_ACCESS_KEY=______
+    export WANDB_API_KEY=______
+    ```
+
+1. **Clone this repository and `cd` into it.**
     ```bash
     git clone https://github.com/leakedweights/isocline.git && cd isocline
     ```
 
-2. Install dependencies.
+2. **Install dependencies.**
     ```bash
     pip install .
     ```
 
-3. Download datasets.
+3. **Download datasets.**
     ```bash
     python3 -m data.download
     ```
 
-4. Run training script.
+4. **Run training script.**
    ```bash
    python3 -m src.run --steps 400_000 --batch-size 512
    ```

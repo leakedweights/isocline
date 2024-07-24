@@ -25,5 +25,6 @@ setup(
         'pillow',
         'requests',
         'gdown',
+        'boto3'
     ],
 )

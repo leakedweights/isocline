@@ -11,6 +11,7 @@ from flax.training import train_state, checkpoints
 from .fid import FID
 from ..utils import cast_dim, update_ema
 from .dataloader import reverse_transform
+from .upload import upload_file
 from ..components.consistency_utils import *
 
 import wandb
@@ -231,11 +232,15 @@ class ConsistencyTrainer:
     def save_checkpoint(self, step):
         os.makedirs(self.config["checkpoint_dir"], exist_ok=True)
 
-        checkpoints.save_checkpoint(self.config["checkpoint_dir"],
-                                    target={"state": self.state, "step": step},
-                                    step=step,
-                                    overwrite=True,
-                                    keep=self.config["checkpoints_to_keep"])
+        ckpt_file = checkpoints.save_checkpoint(self.config["checkpoint_dir"],
+                                                target={
+                                                    "state": self.state, "step": step},
+                                                step=step,
+                                                overwrite=True,
+                                                keep=self.config["checkpoints_to_keep"])
+
+        if self.config["upload_to_s3"]:
+            upload_file(ckpt_file, self.config["s3_bucket"])
 
         self.checkpoint_step = step
 
