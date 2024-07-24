@@ -5,7 +5,8 @@ import zipfile
 from tqdm import tqdm
 import rasterio
 import numpy as np
-from torch.utils.data import Dataset
+from jax.tree_util import tree_map
+from torch.utils.data import Dataset, default_collate
 from sklearn.model_selection import train_test_split
 from torchvision.transforms import Compose, Lambda, ToPILImage
 from typing import Optional
@@ -103,6 +104,12 @@ def split_dataset(elevation_zip: str, context_zip: str, test_ratio: float = 0.1)
         return train_files, eval_files
 
 
+def numpy_collate(batch):
+    batch = default_collate(batch)
+    batch = tree_map(lambda x: np.asarray(x), batch)
+    return batch
+
+
 def save_normalize_eval_dataset(dataset: Dataset, output_dir: str):
     os.makedirs(output_dir, exist_ok=True)
 
@@ -112,6 +119,9 @@ def save_normalize_eval_dataset(dataset: Dataset, output_dir: str):
             normalized_data = elevation_array / abs_max
         else:
             normalized_data = elevation_array
+
+        if normalized_data.ndim == 3 and normalized_data.shape[2] == 1:
+            normalized_data = normalized_data.squeeze(axis=2)
 
         normalized_data = (normalized_data * 255).astype(np.uint8)
 

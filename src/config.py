@@ -56,5 +56,5 @@ trainer_config = {
     "checkpoints_to_keep": 10,
     "checkpoint_dir": None,
     "upload_to_s3": True,
-    "s3_bucket": "s3://terrain-consistency"
+    "s3_bucket": "terrain-consistency"
 }

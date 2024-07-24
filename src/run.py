@@ -14,6 +14,11 @@ from .training import dataloader
 from .models.unet import UNet
 from .training.trainer import ConsistencyTrainer
 
+import warnings
+from rasterio.errors import NotGeoreferencedWarning
+
+warnings.filterwarnings("ignore", category=NotGeoreferencedWarning)
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Training script arguments")
@@ -79,7 +84,11 @@ def train(args):
     config["empty_context"] = train_dataset.empty_context_data
 
     terrain_dataloader = DataLoader(
-        train_dataset, batch_size=args.batch_size, shuffle=True, drop_last=True)
+        train_dataset,
+        batch_size=args.batch_size,
+        shuffle=True,
+        drop_last=True,
+        collate_fn=dataloader.numpy_collate)
 
     wandb.init(
         project=args.wandb_project_name,

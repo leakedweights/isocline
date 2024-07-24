@@ -30,14 +30,26 @@ class FID:
 
         self.apply_fn = jax.jit(partial(model.apply, train=False))
 
-    def precompute(self, save_dir=None):
-        mu, sigma = self.compute_statistics(
-            self.reference_dir, self.params, self.apply_fn, self.batch_size, self.img_size)
-        self.ref_mu, self.ref_sigma = mu, sigma
+    def load_statistics(self, stats_file):
+        if os.path.exists(stats_file):
+            stats = np.load(stats_file)
+            self.ref_mu = stats['mu']
+            self.ref_sigma = stats['sigma']
+            print(f"Loaded statistics from {stats_file}")
+        else:
+            raise FileNotFoundError(f"Statistics file {stats_file} not found.")
 
-        if save_dir is not None:
-            os.makedirs(save_dir, exist_ok=True)
-            np.savez(os.path.join(save_dir, 'stats'), mu=mu, sigma=sigma)
+    def precompute(self):
+        stats_file = os.path.join(self.reference_dir, 'stats')
+        try:
+            self.load_statistics(stats_file)
+        except FileNotFoundError:
+            mu, sigma = self.compute_statistics(
+                self.reference_dir, self.params, self.apply_fn, self.batch_size, self.img_size)
+            self.ref_mu, self.ref_sigma = mu, sigma
+
+            os.makedirs(self.reference_dir, exist_ok=True)
+            np.savez(stats_file, mu=mu, sigma=sigma)
 
     def compute(self, synthetic_dir):
 

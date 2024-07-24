@@ -117,7 +117,7 @@ class UNet(nn.Module):
 
         if self.use_context:
             context = nn.Dense(self.pos_emb_dim)(context)
-            context = cast_dim(context, x.ndim)
+            context = cast_dim(context, x.ndim, 1)
         else:
             context = None
 

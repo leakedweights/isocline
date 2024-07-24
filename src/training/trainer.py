@@ -111,7 +111,7 @@ class ConsistencyTrainer:
     def train(self, train_steps: int):
         parallel_state = replicate(self.state)
 
-        if run_eval:
+        if self.config["run_evals"]:
             fid_score = self.run_eval()
             wandb.log({"fid_score": fid_score}, step=step)
 
@@ -193,8 +193,8 @@ class ConsistencyTrainer:
 
                 save_checkpoint = (
                     step + 1) % self.config["checkpoint_frequency"] == 0
-                save_snapshot = self.config["create_snapshots"] and (step == 0 or (
-                    step + 1) % self.config["snapshot_frequency"] == 0)
+                save_snapshot = self.config["create_snapshots"] and (
+                    step + 1) % self.config["snapshot_frequency"] == 0
                 self._save(
                     parallel_state, step, save_checkpoint, save_snapshot)
 
