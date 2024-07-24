@@ -25,15 +25,15 @@ def parse_args():
     parser.add_argument('--learning-rate', type=float,
                         default=0.0002, help='Learning rate for the optimizer')
     parser.add_argument('--elevation-zip', type=str,
-                        default="../data/elevation.zip", help='Path to the DEM dataset')
+                        default="data/elevation.zip", help='Path to the DEM dataset')
     parser.add_argument('--context-zip', type=str,
-                        default="../data/context.zip", help='Path to the context dataset')
+                        default="data/context.zip", help='Path to the context dataset')
     parser.add_argument('--checkpoint-dir', type=str,
-                        default='./checkpoints', help='Path to save the trained model')
+                        default='checkpoints', help='Path to save the trained model')
     parser.add_argument('--snapshot-dir', type=str,
-                        default='./snapshots', help='Path to save the generation snapshots')
+                        default='snapshots', help='Path to save the generation snapshots')
     parser.add_argument('--eval-dir', type=str,
-                        default='./eval', help='Path to save evaluation images')
+                        default='eval', help='Path to save evaluation images')
     parser.add_argument('--empty-context-file', type=str,
                         default='empty_context.npy', help='Filename of the empty context tensor (in context-zip)')
     parser.add_argument('--wandb-project-name', type=str,
@@ -69,13 +69,15 @@ def train(args):
         args.elevation_zip, args.context_zip, args.empty_context_file, files=train_files)
     eval_dataset = dataloader.ZippedTerrainDataset(
         args.elevation_zip, args.context_zip, args.empty_context_file, files=eval_files)
-    dataloader.save_normalize_eval_dataset(
-        eval_dataset, config["synthetic_dir"])
+
+    if not os.path.exists(config["reference_dir"]) or len(os.listdir(config["reference_dir"])) == 0:
+        dataloader.save_normalize_eval_dataset(
+            eval_dataset, config["reference_dir"])
 
     config["empty_context"] = train_dataset.empty_context_data
 
     terrain_dataloader = DataLoader(
-        train_dataset, batch_size=args.batch_size, shuffle=True)
+        train_dataset, batch_size=args.batch_size, shuffle=True, drop_last=True)
 
     wandb.init(
         project=args.wandb_project_name,

@@ -26,7 +26,6 @@ model_config = {
     "resblock_variant": "BigGAN++",
     "dropout": 0.2,
     "use_context": True,
-    "guidance_scale": 0.2
 }
 
 trainer_config = {

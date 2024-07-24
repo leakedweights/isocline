@@ -45,6 +45,7 @@ def train_step(random_key: Any,
     def loss_fn(params):
         t1_noise_dim = cast_dim(t1, noise.ndim)
         t2_noise_dim = cast_dim(t2, noise.ndim)
+        context = cast_dim(context, noise.ndim)
 
         xt1_raw = x + t1_noise_dim * noise
         xt2_raw = x + t2_noise_dim * noise
@@ -93,7 +94,7 @@ class ConsistencyTrainer:
         self.device_batch_shape = (device_batch_size, *img_shape)
 
         init_input = jnp.ones(self.device_batch_shape)
-        init_context = jnp.ones(self.config["context_dim"], dtype=jnp.float32)
+        init_context = jnp.ones(self.config["context_dim"])
         init_time = jnp.ones((device_batch_size,))
         model_params = model.init(
             init_key, init_input, init_context, init_time, train=True)
@@ -262,7 +263,6 @@ class ConsistencyTrainer:
                                   self.consistency_config["sigma_data"],
                                   self.consistency_config["sigma_min"],
                                   self.consistency_config["sigma_max"],
-                                  self.model.num_classes,
                                   classes=context)
 
     def generate_cfg(self, key, context):

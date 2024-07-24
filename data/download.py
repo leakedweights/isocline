@@ -5,7 +5,7 @@ import gdown
 def main():
     files_to_download = [
         {'file_id': '1zy3ccXIm_Kbrbwg8V0jS_plWPmkuorTh',
-            'destination': './data/terrain.zip'},
+            'destination': './data/elevation.zip'},
         {'file_id': '1uh6BjRbJy8x2i42ghYtiXVv_bAREwtfH',
             'destination': './data/context.zip'},
     ]

@@ -187,15 +187,18 @@ class AttentionBlock(nn.Module):
     variant: str = "NCSN++"
 
     @nn.compact
-    def __call__(self, x, *args, **kwargs):
+    def __call__(self, x, context=None, *args, **kwargs):
         def transform(units, init_scale=0.1): return NIN(units, init_scale)
         b, h, w, c = x.shape
         num_groups = min(c // 4, 32)
 
+        key = context if context is not None else x
+        value = context if context is not None else x
+
         attn = nn.GroupNorm(num_groups)(x)
         Q = transform(c)(x)
-        K = transform(c)(x)
-        V = transform(c)(x)
+        K = transform(c)(key)
+        V = transform(c)(value)
 
         attn = jnp.matmul(Q, K.transpose(0, 1, 3, 2)) / (c * jnp.sqrt(1/2))
         attn = nn.softmax(attn / jnp.sqrt(c), axis=-1)

@@ -5,6 +5,8 @@ from flax import linen as nn
 from typing import Optional, Callable
 from functools import partial
 
+from ..utils import cast_dim
+
 from ..components.blocks import ResnetBlock, AttentionBlock, Upsample, Downsample, FourierEmbedding, sinusoidal_emb
 
 
@@ -114,10 +116,10 @@ class UNet(nn.Module):
                 f"Embedding type '{self.pos_emb_type}' not supported.")
 
         if self.use_context:
-            context_dim = self.pos_emb_dim * \
-                (2 if self.pos_emb_type == "fourier" else 1)
-            context_emb = nn.Dense(self.num_classes, context_dim)
-            pos_emb = jnp.concatenate([pos_emb, context_emb(context)])
+            context = nn.Dense(self.pos_emb_dim)(context)
+            context = cast_dim(context, x.shape)
+        else:
+            context = None
 
         residuals = []
 
@@ -125,16 +127,32 @@ class UNet(nn.Module):
 
         for layer in down_layers:
             for layer_block in layer:
-                x = layer_block(x, pos_emb, deterministic=not train)
+                is_attention = isinstance(layer_block, AttentionBlock)
+                if is_attention:
+                    x = layer_block(
+                        x, pos_emb, deterministic=not train, context=context)
+                else:
+                    x = layer_block(x, pos_emb, deterministic=not train)
+
             residuals.append(x)
 
         for layer in bottom_layers:
-            x = layer(x, pos_emb, deterministic=not train)
+            is_attention = isinstance(layer, AttentionBlock)
+            if is_attention:
+                x = layer(
+                    x, pos_emb, deterministic=not train, context=context)
+            else:
+                x = layer(x, pos_emb, deterministic=not train)
 
         for layer in up_layers:
             x = jnp.concatenate([x, residuals.pop()], axis=-1)
             for layer_block in layer:
-                x = layer_block(x, pos_emb, deterministic=not train)
+                is_attention = isinstance(layer_block, AttentionBlock)
+                if is_attention:
+                    x = layer_block(
+                        x, pos_emb, deterministic=not train, context=context)
+                else:
+                    x = layer_block(x, pos_emb, deterministic=not train)
 
         x = output_layer(x)
 
