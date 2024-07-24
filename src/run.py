@@ -62,6 +62,8 @@ def train(args):
 
     config["reference_dir"] = f"{args.eval_dir}/reference"
     config["synthetic_dir"] = f"{args.eval_dir}/synthetic"
+    config["snapshot_dir"] = args.snapshot_dir
+    config["eval_dir"] = args.eval_dir
 
     train_files, eval_files = dataloader.split_dataset(
         args.elevation_zip, args.context_zip)

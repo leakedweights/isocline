@@ -21,7 +21,7 @@ model_config = {
     "num_init_channels": 16,
     "num_res_blocks": 3,
     "pos_emb_type": "sinusoidal",
-    "pos_emb_dim": 512,
+    "pos_emb_dim": 768,
     "rescale_skip_conns": True,
     "resblock_variant": "BigGAN++",
     "dropout": 0.2,

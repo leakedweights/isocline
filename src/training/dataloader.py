@@ -62,6 +62,9 @@ class ZippedTerrainDataset(Dataset):
         except KeyError:
             context_data = self.empty_context_data
 
+        if elevation_array.shape != 3:
+            elevation_array = np.expand_dims(elevation_array, -1)
+
         return elevation_array, context_data
 
     def __del__(self):

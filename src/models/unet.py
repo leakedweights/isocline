@@ -117,7 +117,7 @@ class UNet(nn.Module):
 
         if self.use_context:
             context = nn.Dense(self.pos_emb_dim)(context)
-            context = cast_dim(context, x.shape)
+            context = cast_dim(context, x.ndim)
         else:
             context = None
 
@@ -130,7 +130,7 @@ class UNet(nn.Module):
                 is_attention = isinstance(layer_block, AttentionBlock)
                 if is_attention:
                     x = layer_block(
-                        x, pos_emb, deterministic=not train, context=context)
+                        x, context, pos_emb, deterministic=not train)
                 else:
                     x = layer_block(x, pos_emb, deterministic=not train)
 
@@ -140,7 +140,7 @@ class UNet(nn.Module):
             is_attention = isinstance(layer, AttentionBlock)
             if is_attention:
                 x = layer(
-                    x, pos_emb, deterministic=not train, context=context)
+                    x, context, pos_emb, deterministic=not train)
             else:
                 x = layer(x, pos_emb, deterministic=not train)
 
@@ -150,7 +150,7 @@ class UNet(nn.Module):
                 is_attention = isinstance(layer_block, AttentionBlock)
                 if is_attention:
                     x = layer_block(
-                        x, pos_emb, deterministic=not train, context=context)
+                        x, context, pos_emb, deterministic=not train)
                 else:
                     x = layer_block(x, pos_emb, deterministic=not train)
 

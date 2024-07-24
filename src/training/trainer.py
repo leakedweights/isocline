@@ -45,7 +45,6 @@ def train_step(random_key: Any,
     def loss_fn(params):
         t1_noise_dim = cast_dim(t1, noise.ndim)
         t2_noise_dim = cast_dim(t2, noise.ndim)
-        context = cast_dim(context, noise.ndim)
 
         xt1_raw = x + t1_noise_dim * noise
         xt2_raw = x + t2_noise_dim * noise
@@ -94,7 +93,8 @@ class ConsistencyTrainer:
         self.device_batch_shape = (device_batch_size, *img_shape)
 
         init_input = jnp.ones(self.device_batch_shape)
-        init_context = jnp.ones(self.config["context_dim"])
+        init_context = jnp.ones(
+            (device_batch_size, *self.config["context_dim"]))
         init_time = jnp.ones((device_batch_size,))
         model_params = model.init(
             init_key, init_input, init_context, init_time, train=True)
@@ -109,6 +109,10 @@ class ConsistencyTrainer:
 
     def train(self, train_steps: int):
         parallel_state = replicate(self.state)
+
+        if run_eval:
+            fid_score = self.run_eval()
+            wandb.log({"fid_score": fid_score}, step=step)
 
         with trange(self.checkpoint_step, train_steps, initial=self.checkpoint_step, total=train_steps) as steps:
             cumulative_loss = 0.0
@@ -193,8 +197,8 @@ class ConsistencyTrainer:
                 self._save(
                     parallel_state, step, save_checkpoint, save_snapshot)
 
-                run_eval = self.config["run_evals"] and (step == 0 or (
-                    step + 1) % self.config["eval_frequency"] == 0)
+                run_eval = self.config["run_evals"] and (
+                    step + 1) % self.config["eval_frequency"] == 0
                 if run_eval:
                     self.state = unreplicate(parallel_state)
                     fid_score = self.run_eval()
@@ -214,7 +218,7 @@ class ConsistencyTrainer:
             self.save_snapshot(step)
 
     def save_snapshot(self, step):
-        outputs = self.generate(self.snapshot_key, classes=None)
+        outputs = self.generate(self.snapshot_key, context=None)
 
         pillow_outputs = [reverse_transform(output) for output in outputs]
 
@@ -263,7 +267,7 @@ class ConsistencyTrainer:
                                   self.consistency_config["sigma_data"],
                                   self.consistency_config["sigma_min"],
                                   self.consistency_config["sigma_max"],
-                                  classes=context)
+                                  context=context)
 
     def generate_cfg(self, key, context):
         cond_key, uncond_key = random.split(key)

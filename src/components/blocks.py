@@ -156,9 +156,9 @@ def _einsum(a, b, c, x, y):
 
 
 def contract_inner(x, y):
-    x_chars = list(string.ascii_lowercase[: len(x.shape)])
-    y_chars = list(string.ascii_uppercase[: len(y.shape)])
-    assert len(x_chars) == len(x.shape) and len(y_chars) == len(y.shape)
+    x_chars = list(string.ascii_lowercase[: x.ndim])
+    y_chars = list(string.ascii_uppercase[: y.ndim])
+    assert len(x_chars) == x.ndim and len(y_chars) == y.ndim
     y_chars[0] = x_chars[-1]
     out_chars = x_chars[:-1] + y_chars[1:]
     return _einsum(x_chars, y_chars, out_chars, x, y)

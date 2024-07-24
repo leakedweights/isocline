@@ -15,7 +15,7 @@ class FID:
     Based on https://github.com/matthias-wright/jax-fid/blob/main/jax_fid/fid.py
     """
 
-    def __init__(self, img_size: tuple, reference_dir: str, batch_size: int = 128, scale_to: int = 256):
+    def __init__(self, img_size: tuple, reference_dir: str, batch_size: int = 512, scale_to: int = 256):
         self.batch_size = batch_size
         self.img_size = img_size
         self.reference_dir = reference_dir
@@ -31,7 +31,7 @@ class FID:
         self.apply_fn = jax.jit(partial(model.apply, train=False))
 
     def precompute(self, save_dir=None):
-        mu, sigma = jf.compute_statistics(
+        mu, sigma = self.compute_statistics(
             self.reference_dir, self.params, self.apply_fn, self.batch_size, self.img_size)
         self.ref_mu, self.ref_sigma = mu, sigma
 
@@ -46,8 +46,7 @@ class FID:
 
         mu2, sigma2 = self.compute_statistics(
             synthetic_dir, self.params, self.apply_fn, self.batch_size, self.img_size)
-        print(
-            f"Ref - mu: {self.ref_mu}, sigma: {self.ref_sigma}; Synth - mu: {mu2}, sigma: {sigma2}")
+
         fid_score = jf.compute_frechet_distance(
             self.ref_mu, mu2, self.ref_sigma, sigma2, eps=1e-3)
 
@@ -61,17 +60,24 @@ class FID:
 
         images = []
         for f in tqdm(os.listdir(path)):
-            img = Image.open(os.path.join(path, f))
+            try:
+                img = Image.open(os.path.join(path, f))
+                if img.mode == "L":
+                    img = img.convert("RGB")
+                img = img.resize(
+                    size=(self.scale_to, self.scale_to),
+                    resample=Image.BILINEAR,
+                )
+                img = np.array(img) / 255.0
+                if img.shape == (self.scale_to, self.scale_to, 3):
+                    images.append(img)
+                else:
+                    print(f"Skipping file {f}: Unexpected shape {img.shape}")
+            except Exception as e:
+                print(f"Skipping file {f}: {e}")
 
-            if img.mode == "L":
-                img = img.convert("RGB")
-
-            img = img.resize(
-                size=(self.scale_to, self.scale_to),
-                resample=Image.BILINEAR,
-            )
-            img = np.array(img) / 255.0
-            images.append(img)
+        if not images:
+            raise ValueError("No valid images found in the directory.")
 
         num_batches = int(len(images) // batch_size)
         act = []
@@ -83,6 +89,14 @@ class FID:
             act.append(pred.squeeze(axis=1).squeeze(axis=1))
         act = jnp.concatenate(act, axis=0)
 
+        if act.shape[0] == 0:
+            raise ValueError(
+                "No activations computed; check image preprocessing.")
+
         mu = np.mean(act, axis=0)
         sigma = np.cov(act, rowvar=False)
+        if np.any(np.isnan(mu)) or np.any(np.isnan(sigma)):
+            print(
+                f"NaN detected in computed statistics. {mu: {mu}}; sigma: {sigma}")
+
         return mu, sigma
