@@ -73,7 +73,57 @@ class ZippedTerrainDataset(Dataset):
         self.context_zip.close()
 
 
-def split_dataset(elevation_zip: str, context_zip: str, test_ratio: float = 0.1):
+class DirectoryTerrainDataset(Dataset):
+    def __init__(self,
+                 elevation_dir: str,
+                 context_dir: str,
+                 empty_context_filename: str,
+                 terrain_file_type: str = "tif",
+                 context_file_type: str = "npy",
+                 files: Optional[list] = None,
+                 **kwargs):
+
+        super().__init__(**kwargs)
+
+        self.elevation_dir = elevation_dir
+        self.context_dir = context_dir
+        self.empty_context_filename = empty_context_filename
+        self.terrain_file_type = terrain_file_type
+        self.context_file_type = context_file_type
+
+        if files is None:
+            self.files = [f for f in os.listdir(elevation_dir) if f.endswith(self.terrain_file_type)]
+        else:
+            self.files = files
+
+        self.empty_context_data = np.load(os.path.join(context_dir, empty_context_filename))
+
+    def __len__(self):
+        return len(self.files)
+
+    def open_tif(self, filepath):
+        with rasterio.open(filepath) as src:
+            data = src.read(1)
+        return data
+
+    def __getitem__(self, idx: int):
+        target_elevation_file = self.files[idx]
+        target_context_file = target_elevation_file.replace(self.terrain_file_type, self.context_file_type)
+
+        elevation_array = self.open_tif(os.path.join(self.elevation_dir, target_elevation_file))
+
+        try:
+            context_data = np.load(os.path.join(self.context_dir, target_context_file))
+        except FileNotFoundError:
+            context_data = self.empty_context_data
+
+        if elevation_array.shape != 3:
+            elevation_array = np.expand_dims(elevation_array, -1)
+
+        return elevation_array, context_data
+
+
+def split_zip_dataset(elevation_zip: str, context_zip: str, test_ratio: float = 0.1):
     with zipfile.ZipFile(elevation_zip) as ezip, zipfile.ZipFile(context_zip) as czip:
         terrain_files = [f for f in ezip.namelist() if f.endswith('tif')]
         context_files = {f.replace('npy', 'tif')
@@ -102,6 +152,30 @@ def split_dataset(elevation_zip: str, context_zip: str, test_ratio: float = 0.1)
                                       len(eval_files_with_context)]
 
         return train_files, eval_files
+
+
+def split_dir_dataset(elevation_dir: str, context_dir: str, test_ratio: float = 0.1):
+    terrain_files = [f for f in os.listdir(elevation_dir) if f.endswith('tif')]
+    context_files = {f.replace('npy', 'tif') for f in os.listdir(context_dir) if f.endswith('npy')}
+
+    files_with_context = [f for f in terrain_files if f in context_files]
+    files_without_context = [f for f in terrain_files if f not in context_files]
+
+    total_files = len(terrain_files)
+    test_size = int(total_files * test_ratio)
+    train_size = total_files - test_size
+
+    if len(files_with_context) <= train_size:
+        train_files = files_with_context
+        remaining_train_slots = train_size - len(train_files)
+
+        additional_train_files, eval_files = train_test_split(files_without_context, test_size=test_size)
+        train_files.extend(additional_train_files[:remaining_train_slots])
+    else:
+        train_files, eval_files_with_context = train_test_split(files_with_context, train_size=train_size)
+        eval_files = eval_files_with_context + files_without_context[:test_size - len(eval_files_with_context)]
+
+    return train_files, eval_files
 
 
 def numpy_collate(batch):

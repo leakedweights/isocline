@@ -29,12 +29,14 @@ def parse_args():
                         default=256, help='Batch size for training')
     parser.add_argument('--learning-rate', type=float,
                         default=0.0002, help='Learning rate for the optimizer')
-    parser.add_argument('--elevation-zip', type=str,
-                        default="data/elevation.zip", help='Path to the DEM dataset')
-    parser.add_argument('--context-zip', type=str,
-                        default="data/context.zip", help='Path to the context dataset')
+    parser.add_argument('--dataset-type', type=str,
+                        default="dir", help='Path to the DEM dataset')                 
+    parser.add_argument('--elevation-source', type=str,
+                        default="data/elevation", help='Path to the DEM dataset')
+    parser.add_argument('--context-source', type=str,
+                        default="data/context", help='Path to the context dataset')
     parser.add_argument('--checkpoint-dir', type=str,
-                        default='checkpoints', help='Path to save the trained model')
+                        default='/tmp/checkpoints', help='Path to save the trained model')
     parser.add_argument('--snapshot-dir', type=str,
                         default='snapshots', help='Path to save the generation snapshots')
     parser.add_argument('--eval-dir', type=str,
@@ -48,10 +50,10 @@ def parse_args():
 
 
 def preprocess_args(args):
-    if not os.path.exists(args.elevation_zip):
+    if not os.path.exists(args.elevation_source):
         raise FileNotFoundError(
             "The specified elevation source does not exist!")
-    if not os.path.exists(args.context_zip):
+    if not os.path.exists(args.context_source):
         raise FileNotFoundError("The specified context source does not exist!")
 
     if not os.path.exists(args.checkpoint_dir):
@@ -71,12 +73,23 @@ def train(args):
     config["snapshot_dir"] = args.snapshot_dir
     config["eval_dir"] = args.eval_dir
 
-    train_files, eval_files = dataloader.split_dataset(
-        args.elevation_zip, args.context_zip)
-    train_dataset = dataloader.ZippedTerrainDataset(
-        args.elevation_zip, args.context_zip, args.empty_context_file, files=train_files)
-    eval_dataset = dataloader.ZippedTerrainDataset(
-        args.elevation_zip, args.context_zip, args.empty_context_file, files=eval_files)
+    if args.dataset_type == "dir":
+        train_files, eval_files = dataloader.split_dir_dataset(
+            args.elevation_source, args.context_source)
+        train_dataset = dataloader.DirectoryTerrainDataset(
+            args.elevation_source, args.context_source, args.empty_context_file, files=train_files)
+        eval_dataset = dataloader.DirectoryTerrainDataset(
+            args.elevation_source, args.context_source, args.empty_context_file, files=eval_files)
+
+    elif args.dataset_type == "zip":
+        train_files, eval_files = dataloader.split_zip_dataset(
+            args.elevation_source, args.context_source)
+        train_dataset = dataloader.ZippedTerrainDataset(
+            args.elevation_source, args.context_source, args.empty_context_file, files=train_files)
+        eval_dataset = dataloader.ZippedTerrainDataset(
+            args.elevation_source, args.context_source, args.empty_context_file, files=eval_files)
+    else:
+        raise Exception("Invalid dataset type!")
 
     if not os.path.exists(config["reference_dir"]) or len(os.listdir(config["reference_dir"])) == 0:
         dataloader.save_normalize_eval_dataset(

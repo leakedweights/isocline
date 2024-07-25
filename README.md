@@ -3,6 +3,8 @@
 ## Requirements & Installation
 You will need an XLA-compatible device and 32GB+ RAM. Also, these packages: jax, jaxlib, flax, optax, numpy, scipy, rasterio, torch, torchvision, wandb, transformers, jax_fid, sklearn, tqdm, pillow, gdown, requests.
 
+For running/training the models on ROCm devices, see: https://rocm.docs.amd.com/projects/install-on-linux/en/latest/how-to/3rd-party/jax-install.html
+
 ### Setup
 
 0. **Setup environment variables**
@@ -23,11 +25,15 @@ You will need an XLA-compatible device and 32GB+ RAM. Also, these packages: jax,
     ```
 
 3. **Download datasets.**
+   
+   This script download the elevation map dataset and the CLIP context embeddings. If you want to use a `ZippedTerrainDataset` instead of the default `DirectoryTerrainDataset`, you do not need the `unpack` flag.
     ```bash
-    python3 -m data.download
+    python3 -m data.download --unpack
     ```
 
 4. **Run training script.**
+
+   If you want to use a `ZippedTerrainDataset`, use these flags: `--dataset-type=zip`, `--elevation-source=data/elevation.zip`, and `--context-source=data/context.zip`.
    ```bash
    python3 -m src.run --steps 400_000 --batch-size 512
    ```
