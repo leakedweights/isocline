@@ -67,6 +67,7 @@ def train(args):
 
     config["reference_dir"] = f"{args.eval_dir}/reference"
     config["synthetic_dir"] = f"{args.eval_dir}/synthetic"
+    config["checkpoint_dir"] = args.checkpoint_dir
     config["snapshot_dir"] = args.snapshot_dir
     config["eval_dir"] = args.eval_dir
 
