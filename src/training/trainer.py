@@ -113,7 +113,7 @@ class ConsistencyTrainer:
 
         if self.config["run_evals"]:
             fid_score = self.run_eval()
-            wandb.log({"fid_score": fid_score}, step=step)
+            wandb.log({"fid_score": fid_score}, step=self.checkpoint_step)
 
         with trange(self.checkpoint_step, train_steps, initial=self.checkpoint_step, total=train_steps) as steps:
             cumulative_loss = 0.0
