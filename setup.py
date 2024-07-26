@@ -18,6 +18,7 @@ setup(
         'torch',
         'torchvision',
         'wandb',
+        'tensorflow_datasets',
         'transformers',
         'jax_fid @ git+https://github.com/matthias-wright/jax-fid',
         'scikit-learn',
@@ -25,6 +26,6 @@ setup(
         'pillow',
         'requests',
         'gdown',
-        'boto3'
+        'boto3',
     ],
 )

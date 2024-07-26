@@ -6,10 +6,11 @@ import argparse
 import jax
 import wandb
 import optax
+import tensorflow_datasets as tfds
 from jax import random
-from torch.utils.data import DataLoader
 
 from .config import model_config, trainer_config, consistency_config
+from .training import tf_data
 from .training import dataloader
 from .models.unet import UNet
 from .training.trainer import ConsistencyTrainer
@@ -30,7 +31,7 @@ def parse_args():
     parser.add_argument('--learning-rate', type=float,
                         default=0.0002, help='Learning rate for the optimizer')
     parser.add_argument('--dataset-type', type=str,
-                        default="dir", help='Path to the DEM dataset')                 
+                        default="dir", help='Path to the DEM dataset')
     parser.add_argument('--elevation-source', type=str,
                         default="data/elevation", help='Path to the DEM dataset')
     parser.add_argument('--context-source', type=str,
@@ -73,20 +74,20 @@ def train(args):
     config["snapshot_dir"] = args.snapshot_dir
     config["eval_dir"] = args.eval_dir
 
+    img_shape = (64, 64, 1)
+
     if args.dataset_type == "dir":
         train_files, eval_files = dataloader.split_dir_dataset(
             args.elevation_source, args.context_source)
-        train_dataset = dataloader.DirectoryTerrainDataset(
-            args.elevation_source, args.context_source, args.empty_context_file, files=train_files)
+        train_dataset = tf_data.get_preheated_dataset(
+            batch_size=args.batch_size,
+            elevation_dir=args.elevation_source,
+            context_dir=args.context_source,
+            img_shape=img_shape[:2],
+            emb_shape=config["context_dim"],
+            included_files=train_files,
+            empty_context_filename=args.empty_context_file)
         eval_dataset = dataloader.DirectoryTerrainDataset(
-            args.elevation_source, args.context_source, args.empty_context_file, files=eval_files)
-
-    elif args.dataset_type == "zip":
-        train_files, eval_files = dataloader.split_zip_dataset(
-            args.elevation_source, args.context_source)
-        train_dataset = dataloader.ZippedTerrainDataset(
-            args.elevation_source, args.context_source, args.empty_context_file, files=train_files)
-        eval_dataset = dataloader.ZippedTerrainDataset(
             args.elevation_source, args.context_source, args.empty_context_file, files=eval_files)
     else:
         raise Exception("Invalid dataset type!")
@@ -96,13 +97,6 @@ def train(args):
             eval_dataset, config["reference_dir"])
 
     config["empty_context"] = train_dataset.empty_context_data
-
-    terrain_dataloader = DataLoader(
-        train_dataset,
-        batch_size=args.batch_size,
-        shuffle=True,
-        drop_last=True,
-        collate_fn=dataloader.numpy_collate)
 
     wandb.init(
         project=args.wandb_project_name,
@@ -116,8 +110,8 @@ def train(args):
     trainer = ConsistencyTrainer(random_key,
                                  model=model,
                                  optimizer=optimizer,
-                                 dataloader=terrain_dataloader,
-                                 img_shape=(64, 64, 1),
+                                 dataloader=tfds.as_numpy(train_dataset),
+                                 img_shape=img_shape,
                                  num_devices=jax.local_device_count(),
                                  config=config,
                                  consistency_config=consistency_config)

@@ -4,7 +4,6 @@ import flax
 from jax import random
 import jax.numpy as jnp
 from flax import linen as nn
-from torch.utils.data import DataLoader
 from flax.jax_utils import replicate, unreplicate
 from flax.training import train_state, checkpoints
 
@@ -74,7 +73,7 @@ class ConsistencyTrainer:
                  random_key: Any,
                  model: nn.Module,
                  optimizer: Any,
-                 dataloader: DataLoader,
+                 dataloader: Any,
                  img_shape,
                  num_devices: int,
                  config: dict,
@@ -110,6 +109,7 @@ class ConsistencyTrainer:
 
     def train(self, train_steps: int):
         parallel_state = replicate(self.state)
+        iterator = iter(self.dataloader)
 
         if self.config["run_evals"]:
             fid_score = self.run_eval()
@@ -119,7 +119,7 @@ class ConsistencyTrainer:
             cumulative_loss = 0.0
             for step in steps:
                 try:
-                    batch = next(self.dataloader.__iter__())
+                    batch = next(iterator)
                 except StopIteration:
                     continue
 

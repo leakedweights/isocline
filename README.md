@@ -24,16 +24,12 @@ For running/training the models on ROCm devices, see: https://rocm.docs.amd.com/
     pip install .
     ```
 
-3. **Download datasets.**
-   
-   This script download the elevation map dataset and the CLIP context embeddings. If you want to use a `ZippedTerrainDataset` instead of the default `DirectoryTerrainDataset`, you do not need the `unpack` flag.
+3. **Download and unpack data archives.**
     ```bash
     python3 -m data.download --unpack
     ```
 
 4. **Run training script.**
-
-   If you want to use a `ZippedTerrainDataset`, use these flags: `--dataset-type=zip`, `--elevation-source=data/elevation.zip`, and `--context-source=data/context.zip`.
    ```bash
    python3 -m src.run --steps 400_000 --batch-size 512
    ```
