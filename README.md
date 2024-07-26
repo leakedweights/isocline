@@ -31,7 +31,7 @@ For running/training the models on ROCm devices, see: https://rocm.docs.amd.com/
 
 4. **Run training script.**
    ```bash
-   python3 -m src.run --steps 400_000 --batch-size 512
+   python3 -m src.run --steps 800_000 --batch-size 512
    ```
 
 ## Dataset
