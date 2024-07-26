@@ -81,6 +81,7 @@ def get_preheated_dataset(batch_size, elevation_dir, context_dir, img_shape, emb
     ds = ds.cache()
     ds = ds.shuffle(10000)
     ds = ds.batch(batch_size)
+    ds = ds.repeat()
     ds = ds.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 
     options = tf.data.Options()
