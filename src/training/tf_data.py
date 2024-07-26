@@ -25,8 +25,8 @@ class TextToTerrainDataset(tfds.core.GeneratorBasedBuilder):
             description=(
                 "Dataset consisting of elevation maps in .tif format and corresponding text embeddings."),
             features=tfds.features.FeaturesDict({
-                'elevation': tfds.features.Tensor(shape=self.elevation_shape, dtype=tf.float32),
-                'embedding': tfds.features.Tensor(shape=self.embedding_shape, dtype=tf.float32),
+                'elevation': tfds.features.Tensor(shape=self.elevation_shape, dtype=np.float32),
+                'embedding': tfds.features.Tensor(shape=self.embedding_shape, dtype=np.float32),
             }),
             supervised_keys=('elevation', 'embedding'),
         )
@@ -72,7 +72,7 @@ def load_and_preprocess(example):
 def get_preheated_dataset(batch_size, elevation_dir, context_dir, img_shape, emb_shape, included_files, empty_context_filename):
 
     builder = TextToTerrainDataset(elevation_dir=elevation_dir, embedding_dir=context_dir,
-                              elevation_shape=img_shape, embedding_shape=emb_shape, file_list=included_files, empty_context_filename=empty_context_filename)
+                                   elevation_shape=img_shape, embedding_shape=emb_shape, file_list=included_files, empty_context_filename=empty_context_filename)
     builder.download_and_prepare()
 
     ds = builder.as_dataset(split='full_dataset')

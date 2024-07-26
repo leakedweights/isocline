@@ -5,7 +5,9 @@ import argparse
 
 import jax
 import wandb
+import numpy as np
 import optax
+import tensorflow as tf
 import tensorflow_datasets as tfds
 from jax import random
 
@@ -18,6 +20,7 @@ from .training.trainer import ConsistencyTrainer
 import warnings
 from rasterio.errors import NotGeoreferencedWarning
 
+tf.config.set_visible_devices([], device_type='GPU')
 warnings.filterwarnings("ignore", category=NotGeoreferencedWarning)
 
 
@@ -96,7 +99,8 @@ def train(args):
         dataloader.save_normalize_eval_dataset(
             eval_dataset, config["reference_dir"])
 
-    config["empty_context"] = train_dataset.empty_context_data
+    config["empty_context"] = np.load(os.path.join(
+        args.context_source, args.empty_context_file)).astype(np.float32)
 
     wandb.init(
         project=args.wandb_project_name,
@@ -112,6 +116,7 @@ def train(args):
                                  optimizer=optimizer,
                                  dataloader=tfds.as_numpy(train_dataset),
                                  img_shape=img_shape,
+                                 batch_size=args.batch_size,
                                  num_devices=jax.local_device_count(),
                                  config=config,
                                  consistency_config=consistency_config)

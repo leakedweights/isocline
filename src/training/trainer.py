@@ -76,6 +76,7 @@ class ConsistencyTrainer:
                  dataloader: Any,
                  img_shape,
                  num_devices: int,
+                 batch_size: int,
                  config: dict,
                  consistency_config: dict):
 
@@ -84,12 +85,13 @@ class ConsistencyTrainer:
         self.checkpoint_step = 0
         self.consistency_config = consistency_config
         self.dataloader = dataloader
+        self.batch_size = batch_size
         self.random_key, self.snapshot_key, init_key = random.split(
             random_key, 3)
 
-        assert dataloader.batch_size % num_devices == 0, "Batch size must be divisible by the number of devices!"
+        assert batch_size % num_devices == 0, "Batch size must be divisible by the number of devices!"
         self.num_devices = num_devices
-        device_batch_size = dataloader.batch_size // num_devices
+        device_batch_size = batch_size // num_devices
         self.device_batch_shape = (device_batch_size, *img_shape)
 
         init_input = jnp.ones(self.device_batch_shape)
@@ -124,6 +126,9 @@ class ConsistencyTrainer:
                     continue
 
                 x_batch, context_batch = batch
+                if x_batch.shape != 4:
+                    x_batch = jnp.expand_dims(x_batch, -1)
+
                 _, *data_dim = x_batch.shape
                 _, *context_dim = context_batch.shape
 
@@ -140,7 +145,6 @@ class ConsistencyTrainer:
                     x_batch = (x_batch - min_vals) / range_vals
 
                 x_batch = 2 * x_batch - 1
-                x_batch = jnp.transpose(x_batch, (0, 2, 3, 1))
 
                 x_parallel = x_batch.reshape(self.num_devices, -1, *data_dim)
                 context_parallel = context_batch.reshape(
