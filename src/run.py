@@ -136,6 +136,7 @@ def train(args):
         trainer.load_checkpoint()
 
     if args.generate:
+        i = 0
         while i < args.num_samples:
             sample_key, subkey = random.split(sample_key)
             samples = trainer.generate_cfg(sample_key)
