@@ -49,6 +49,11 @@ def parse_args():
                         default='empty_context.npy', help='Filename of the empty context tensor (in context-zip)')
     parser.add_argument('--wandb-project-name', type=str,
                         default='terrain_consistency', help='Weights and Biases project name')
+    parser.add_argument('--load-ckpt', action=argparse.BooleanOptionalAction, default=False,
+                        help='Load latest checkpoint in checkpoint-dir.')
+    parser.add_argument('--generate', action=argparse.BooleanOptionalAction, default=False,
+                        help='Generate samples. Must specify num-samples.')
+    parser.add_argument("--num-samples", type=int, help='Number of samples to save. Must be specified when --generate is true.')
 
     return parser.parse_args()
 
@@ -64,6 +69,10 @@ def preprocess_args(args):
         os.makedirs(args.checkpoint_dir)
     if not os.path.exists(args.snapshot_dir):
         os.makedirs(args.snapshot_dir)
+
+    if args.generate and not args.num_samples:
+        raise Exception("When using the --generate flag, you \
+                        must specify the number of samples to obtain.")
 
 
 def train(args):
@@ -104,10 +113,12 @@ def train(args):
 
     wandb.init(
         project=args.wandb_project_name,
+        id="terrainict",
         config={
             "model": model_config,
             "trainer": config
-        }
+        },
+        resume="allow"
     )
 
     random_key = random.PRNGKey(0)
@@ -121,7 +132,23 @@ def train(args):
                                  config=config,
                                  consistency_config=consistency_config)
 
-    trainer.train(args.steps)
+    if args.load_ckpt:
+        trainer.load_checkpoint()
+
+    if args.generate:
+        while i < args.num_samples:
+            sample_key, subkey = random.split(sample_key)
+            samples = trainer.generate_cfg(sample_key)
+
+            pillow_outputs = [dataloader.reverse_transform(
+                output) for output in samples[:min(args.num_samples - i, len(samples))]]
+            for idx, output in enumerate(pillow_outputs):
+                fpath = f"{args.eval_dir}/{i + idx}.png"
+                output.save(fpath)
+
+            i += len(pillow_outputs)
+    else:
+        trainer.train(args.steps)
 
 
 def main():
